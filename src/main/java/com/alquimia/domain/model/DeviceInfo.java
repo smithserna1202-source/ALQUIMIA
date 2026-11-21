@@ -1,19 +1,18 @@
 package com.alquimia.domain.model;
-public class DeviceInfo {
-    private String deviceId;
-    private double distance;
-    private String messageFragment;
-    public DeviceInfo(String deviceId, double distance, String messageFragment) {
-        this.deviceId = deviceId;
-        this.distance = distance;
-        this.messageFragment = messageFragment != null ? messageFragment : "";
+
+public record DeviceInfo(String deviceId, double distance, String messageFragment) {
+    public DeviceInfo {
+        if (deviceId == null || deviceId.isBlank()) {
+            throw new IllegalArgumentException("El deviceId es obligatorio.");
+        }
+        if (Double.isNaN(distance) || distance < 0) {
+            throw new IllegalArgumentException("La distancia debe ser un numero mayor o igual a 0.");
+        }
+        messageFragment = messageFragment == null ? "" : messageFragment;
     }
+
+    // Se conservan los getters del proyecto original.
     public String getDeviceId() { return deviceId; }
-    public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
     public double getDistance() { return distance; }
-    public void setDistance(double distance) { this.distance = distance; }
     public String getMessageFragment() { return messageFragment; }
-    public void setMessageFragment(String messageFragment) { 
-        this.messageFragment = messageFragment != null ? messageFragment : ""; 
-    }
 }

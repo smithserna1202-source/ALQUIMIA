@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operación Alquimia</title>
+<style>
+  body { margin:0; font-family:system-ui,Segoe UI,Arial,sans-serif; background:#10131f; color:#e8ecff; }
+  main { max-width:640px; margin:0 auto; padding:24px 16px; }
+  .card { background:#181d30; border-radius:12px; padding:16px; margin-bottom:16px; }
+  label { display:block; font-size:.85rem; color:#8b95c9; margin:10px 0 4px; }
+  input { width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px; border:1px solid #2a3560; background:#0e1429; color:#e8ecff; }
+  button { padding:10px 16px; border:0; border-radius:8px; background:#fbbf24; color:#2a1c00; font-weight:700; cursor:pointer; }
+  pre { background:#0e1429; padding:12px; border-radius:8px; overflow:auto; }
+  .ok { color:#6ee7b7; } .err { color:#fca5a5; }
+</style>
+</head>
+<body>
+<main>
+  <h1>⚗️ Operación Alquimia</h1>
+  <p style="color:#8b95c9">Distancia medida por cada dispositivo y fragmento del mensaje.</p>
+  <div class="card" id="form"></div>
+  <button id="go">Calcular</button>
+  <div class="card" style="margin-top:16px"><strong>Resultado</strong><pre id="out">—</pre></div>
+</main>
+<script>
+const devices = [
+  { id: "STAR Labs",          d: 538.52, m: "Hola" },
+  { id: "CCPD",               d: 141.42, m: "desde" },
+  { id: "S.T.A.R. Satellite", d: 509.90, m: "Alquimia" }
+];
+document.getElementById("form").innerHTML = devices.map((s, i) => `
+  <strong>${s.id}</strong>
+  <label>Distancia</label><input type="number" step="any" id="d${i}" value="${s.d}">
+  <label>Fragmento</label><input id="m${i}" value="${s.m}">`).join("<hr style='border:0;border-top:1px solid #2a3560;margin:14px 0'>");
+document.getElementById("go").onclick = async () => {
+  const body = devices.map((s, i) => ({ deviceId: s.id,
+    distance: parseFloat(document.getElementById("d" + i).value),
+    messageFragment: document.getElementById("m" + i).value }));
+  const out = document.getElementById("out");
+  try {
+    const res = await fetch("/api/alquimia/process", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    out.className = res.ok ? "ok" : "err";
+    out.textContent = JSON.stringify(data, null, 2);
+  } catch (e) { out.className = "err"; out.textContent = "No se pudo conectar: " + e.message; }
+};
+</script>
+</body>
+</html>

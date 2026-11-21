@@ -1,4 +1,6 @@
 target/
 .vscode/
+.idea/
 *.class
 *.jar
+!.mvn/wrapper/maven-wrapper.jar
