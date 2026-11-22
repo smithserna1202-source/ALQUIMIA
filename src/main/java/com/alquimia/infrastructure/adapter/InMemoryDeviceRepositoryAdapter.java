@@ -1,31 +1,28 @@
 package com.alquimia.infrastructure.adapter;
 
+import com.alquimia.application.port.out.DeviceRepositoryPort;
 import com.alquimia.domain.model.DeviceInfo;
-import com.alquimia.domain.port.DeviceRepositoryPort;
-import org.springframework.stereotype.Repository;
+import com.alquimia.domain.model.KnownDevice;
 
-import java.util.LinkedHashMap;
+import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@Repository
+/** Adaptador de salida: guarda en memoria (sin base de datos). EnumMap mantiene el orden canónico. */
 public class InMemoryDeviceRepositoryAdapter implements DeviceRepositoryPort {
 
-    // LinkedHashMap conserva el orden de llegada; synchronized porque Spring atiende peticiones en paralelo.
-    private final Map<String, DeviceInfo> storage = new LinkedHashMap<>();
+    private final Map<KnownDevice, DeviceInfo> storage = new EnumMap<>(KnownDevice.class);
 
     @Override
-    public synchronized void save(DeviceInfo device) { storage.put(device.getDeviceId(), device); }
+    public synchronized void save(DeviceInfo info) { storage.put(info.device(), info); }
 
     @Override
-    public synchronized Optional<DeviceInfo> findById(String deviceId) { return Optional.ofNullable(storage.get(deviceId)); }
+    public synchronized Optional<DeviceInfo> findById(KnownDevice device) { return Optional.ofNullable(storage.get(device)); }
 
     @Override
-    public synchronized Map<String, DeviceInfo> findAll() { return new LinkedHashMap<>(storage); }
+    public synchronized List<DeviceInfo> findAll() { return List.copyOf(storage.values()); }
 
     @Override
-    public synchronized void delete(String deviceId) { storage.remove(deviceId); }
-
-    @Override
-    public synchronized void update(DeviceInfo device) { storage.put(device.getDeviceId(), device); }
+    public synchronized boolean deleteById(KnownDevice device) { return storage.remove(device) != null; }
 }

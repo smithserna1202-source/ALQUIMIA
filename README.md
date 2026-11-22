@@ -25,21 +25,32 @@ Para no instalar Maven: con internet, ejecuta una vez `mvn wrapper:wrapper`.
 | S.T.A.R. Satellite | (500, 100) |
 
 ## Endpoints (`/api/alquimia`)
-| Método | Ruta | Qué hace |
-|---|---|---|
-| POST | `/process` | Calcula con una lista de dispositivos |
-| POST | `/devices` | Registra un dispositivo |
-| GET | `/calculate` | Calcula con los registrados |
-| PUT | `/devices/{id}` | Reemplaza (requiere `distance`) |
-| PATCH | `/devices/{id}` | Actualiza solo lo enviado |
-| DELETE | `/devices/{id}` | Elimina |
+| Func. | Método | Ruta | Qué hace | Errores |
+|---|---|---|---|---|
+| F1 | POST | `/process` | Calcula con los 3 dispositivos (sin guardar) | 400, 422 |
+| F2 | POST | `/devices` | Registra un dispositivo (201) | 400, 409 si ya existe |
+| F3 | GET | `/devices`, `/devices/{id}` | Consulta lo registrado | 404 |
+| F3 | GET | `/calculate` | Procesa lo acumulado | 422 si faltan datos |
+| F4 | PUT | `/devices/{id}` | Reemplazo: `distance` y `messageFragment` obligatorios | 400, 404 |
+| F5 | PATCH | `/devices/{id}` | Cambia solo lo enviado (mínimo un campo) | 400, 404 |
+| F6 | DELETE | `/devices/{id}` | Elimina (204) | 404 |
 
-```bash
-curl -X POST localhost:8080/api/alquimia/process -H "Content-Type: application/json" -d '[
- {"deviceId":"STAR Labs","distance":538.52,"messageFragment":"Hola"},
- {"deviceId":"CCPD","distance":141.42,"messageFragment":"desde"},
- {"deviceId":"S.T.A.R. Satellite","distance":509.90,"messageFragment":"Alquimia"}]'
-```
+Errores: `{"error": "mensaje"}`. 400 = dato inválido o dispositivo desconocido, 404 = dispositivo sin información,
+409 = ya registrado, 422 = datos insuficientes o geometría degenerada.
+
+## Decisiones de diseño
+- **Dominio** (`domain`): `KnownDevice` (catálogo y posiciones), `DeviceInfo` (inmutable, valida), servicios
+  `TrilaterationCalculator` y `MessageReconstructor`, y excepciones propias. Sin Spring ni HTTP.
+- **Aplicación** (`application`): un puerto de entrada por funcionalidad (`port.in`), puerto de salida
+  `DeviceRepositoryPort` (`port.out`) y `AlquimiaService`, sin anotaciones de framework.
+- **Infraestructura** (`infrastructure`): controlador REST con DTOs, `ApiExceptionHandler` (dominio -> HTTP),
+  repositorio en memoria y `BeanConfig`, que conecta todo.
+- **Mensaje:** cada dispositivo aporta un fragmento de texto; los vacíos se ignoran y se unen en el orden fijo
+  STAR Labs, CCPD, S.T.A.R. Satellite (no en el de llegada). El enunciado no define un formato más detallado.
+- **Registrar** un dispositivo que ya existe es error (409); para cambiarlo están PUT y PATCH.
 
 ## Tests
 `mvn test`
+
+## Cr�ditos
+Proyecto desarrollado a partir de la base de Jeison (https://github.com/jeison12021989/operacion-alquimia), con su autorizaci�n.

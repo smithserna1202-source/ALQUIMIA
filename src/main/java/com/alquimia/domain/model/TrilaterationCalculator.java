@@ -1,47 +1,46 @@
 package com.alquimia.domain.model;
 
+import com.alquimia.domain.exception.InsufficientDataException;
+import com.alquimia.domain.exception.TrilaterationException;
+
+import java.util.Collection;
+import java.util.EnumMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-public class TrilaterationCalculator {
+/** Servicio de dominio: ubica el laboratorio restando las ecuaciones de las tres circunferencias. */
+public final class TrilaterationCalculator {
 
-    private static final Map<String, double[]> DEVICE_POSITIONS = Map.of(
-        "STAR Labs", new double[]{-500.0, -200.0},
-        "CCPD", new double[]{100.0, -100.0},
-        "S.T.A.R. Satellite", new double[]{500.0, 100.0}
-    );
+    private TrilaterationCalculator() {}
 
-    public static LabLocation calculateLocation(Map<String, DeviceInfo> devices) {
-        if (devices.size() < 3) {
-            throw new IllegalArgumentException("Se necesitan datos de al menos 3 dispositivos para la trilateración.");
+    public static LabLocation calculateLocation(Collection<DeviceInfo> infos) {
+        Map<KnownDevice, DeviceInfo> byDevice = new EnumMap<>(KnownDevice.class);
+        infos.forEach(i -> byDevice.put(i.device(), i));
+
+        String missing = java.util.Arrays.stream(KnownDevice.values())
+            .filter(d -> !byDevice.containsKey(d))
+            .map(KnownDevice::displayName)
+            .collect(Collectors.joining(", "));
+        if (!missing.isEmpty()) {
+            throw new InsufficientDataException("No hay datos suficientes: faltan " + missing + ".");
         }
-        double[] p1 = DEVICE_POSITIONS.get("STAR Labs");
-        double[] p2 = DEVICE_POSITIONS.get("CCPD");
-        double[] p3 = DEVICE_POSITIONS.get("S.T.A.R. Satellite");
-        double r1 = distanceOf(devices, "STAR Labs");
-        double r2 = distanceOf(devices, "CCPD");
-        double r3 = distanceOf(devices, "S.T.A.R. Satellite");
 
-        double A = 2 * p2[0] - 2 * p1[0];
-        double B = 2 * p2[1] - 2 * p1[1];
-        double C = Math.pow(r1, 2) - Math.pow(r2, 2) - Math.pow(p1[0], 2) + Math.pow(p2[0], 2) - Math.pow(p1[1], 2) + Math.pow(p2[1], 2);
-        double D = 2 * p3[0] - 2 * p2[0];
-        double E = 2 * p3[1] - 2 * p2[1];
-        double F = Math.pow(r2, 2) - Math.pow(r3, 2) - Math.pow(p2[0], 2) + Math.pow(p3[0], 2) - Math.pow(p2[1], 2) + Math.pow(p3[1], 2);
+        KnownDevice d1 = KnownDevice.STAR_LABS, d2 = KnownDevice.CCPD, d3 = KnownDevice.STAR_SATELLITE;
+        double r1 = byDevice.get(d1).distance(), r2 = byDevice.get(d2).distance(), r3 = byDevice.get(d3).distance();
 
-        double det = A * E - B * D;
+        double a = 2 * (d2.x() - d1.x());
+        double b = 2 * (d2.y() - d1.y());
+        double c = r1 * r1 - r2 * r2 - d1.x() * d1.x() + d2.x() * d2.x() - d1.y() * d1.y() + d2.y() * d2.y();
+        double d = 2 * (d3.x() - d2.x());
+        double e = 2 * (d3.y() - d2.y());
+        double f = r2 * r2 - r3 * r3 - d2.x() * d2.x() + d3.x() * d3.x() - d2.y() * d2.y() + d3.y() * d3.y();
+
+        double det = a * e - b * d;
         if (Math.abs(det) < 1e-9) {
-            throw new IllegalStateException("Los dispositivos estan alineados, no se puede calcular.");
+            throw new TrilaterationException("Los dispositivos están alineados, no se puede calcular.");
         }
-        double x = (C * E - F * B) / det;
-        double y = (A * F - C * D) / det;
+        double x = (c * e - f * b) / det;
+        double y = (a * f - c * d) / det;
         return new LabLocation(Math.round(x * 100.0) / 100.0, Math.round(y * 100.0) / 100.0);
-    }
-
-    private static double distanceOf(Map<String, DeviceInfo> devices, String id) {
-        DeviceInfo d = devices.get(id);
-        if (d == null) {
-            throw new IllegalArgumentException("Falta el dispositivo '" + id + "'.");
-        }
-        return d.getDistance();
     }
 }
